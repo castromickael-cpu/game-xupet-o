@@ -2,7 +2,8 @@
 // Ainda NÃO está ligado ao pixel-battle.html: ele é a base para essa integração.
 import { createClient } from '@supabase/supabase-js';
 
-export const sb = createClient('https://SEU-PROJETO.supabase.co', 'SUA-ANON-KEY');
+export const sb = createClient('https://sesppgzjqhilixbvirob.supabase.co', 'sb_publishable_yXM-VwkNse7FCbH6lBviKA_B5yq81Im');
+
 
 export async function login() {                       // login anônimo (habilite no painel)
   const { data: { session } } = await sb.auth.getSession();
