@@ -202,10 +202,11 @@ function enter(r){
  O.poll=setInterval(refresh,3000);                         // reserva caso o realtime falhe
  O.hb=setInterval(function(){
   sb.rpc('heartbeat',{p_room:r.id});
-  var o=opp();if(O.room.status=='playing'&&o&&Date.now()-new Date(o.last_seen)>55000)
+  var o=opp();if(O.room.status=='playing'&&o&&Date.now()-new Date(o.last_seen)>170000)
    rpc('claim_abandon',{p_room:r.id}).then(refresh).catch(function(){})},10000);
  $('lobHome').style.display='none';$('lobRoom').style.display='block';
  refresh()}
+document.addEventListener('visibilitychange',function(){if(O&&!document.hidden){sb.rpc('heartbeat',{p_room:O.id});refresh()}});
 function leaveWatch(){if(!O)return;clearInterval(O.hb);clearInterval(O.poll);clearInterval(O.tm);try{sb.removeChannel(O.ch)}catch(e){}O=null}
 async function oLeave(){if(!O){go('menu');return}var id=O.id;try{await rpc('leave_room',{p_room:id})}catch(e){}sv('pb_room',null);leaveWatch();go('menu')}
 function mine(){return O.pl.filter(function(p){return p.user_id==ME.id})[0]}
@@ -225,7 +226,11 @@ async function oReady(){var m=mine();try{await rpc('set_ready',{p_room:O.id,p_re
 function oRender(){
  var r=O.room;
  if(r.status=='waiting')return showRoom();
- if(r.status=='finished')return oEnd();
+ if(r.status=='finished'){
+  var onB=$('battle').classList.contains('on'),m0=mine(),o0=opp();
+  if(!onB){oEnd();return}
+  if(!O.endT){if(m0&&o0&&m0.character_id&&o0.character_id){oInfo('i1',m0,'VOCÊ '+chOf(m0).n);oInfo('i0',o0,'ADV. '+chOf(o0).n)}O.endT=setTimeout(oEnd,2200)}
+  return}
  if(!$('battle').classList.contains('on')){go('battle');O.key=''}
  var m=mine(),o=opp();if(!m||!o||!m.character_id||!o.character_id)return;
  var cm=chOf(m),co=chOf(o);
@@ -282,11 +287,14 @@ function showRoom(){
   return '<p>J'+s+(p.user_id==ME.id?' (você)':'')+': '+(c?c.n:'escolhendo...')+'<br>'+(p.ready?'✔ PRONTO':'não pronto')+' | '+(on?'● online':'○ offline')+'</p>'}).join('');
  $('rCards').innerHTML=CH.map(function(c){return '<div class="card'+(m&&m.character_id==c.id?' sel':'')+'" onclick="oPick(\''+c.id+'\')"><img src="'+IMG[c.id]+'" alt="'+c.n+'"><b>'+c.n+'</b><small>'+c.spn+'</small></div>'}).join('');
  $('rdy').textContent=m&&m.ready?'CANCELAR PRONTO':'ESTOU PRONTO';$('rdy').disabled=!(m&&m.character_id)}
-function oEnd(){
- if(O.ended)return;O.ended=true;clearInterval(O.tm);
- var w=O.room.winner_id==ME.id;
+async function oEnd(){
+ if(!O||O.ended)return;O.ended=true;clearInterval(O.tm);
+ var w=O.room.winner_id==ME.id,why='';
+ try{var mr=await sb.from('matches').select('reason').eq('room_id',O.id).maybeSingle();var rs=mr.data&&mr.data.reason;
+  why=rs=='disconnect'?'Partida encerrada: um jogador ficou desconectado.':rs=='forfeit'?'Partida encerrada: um jogador saiu.':'Nocaute! A vida chegou a zero.'}catch(e){}
+ if(!O)return;
  $('rT').textContent=w?'VOCÊ VENCEU! 🏆':'VOCÊ PERDEU...';
- $('rB').innerHTML=O.pl.map(function(p){var t=p.correct+p.wrong,pc=t?Math.round(p.correct/t*100):0,c=p.character_id?chOf(p):{n:'?'};
-  return '<p><b>'+(p.user_id==ME.id?'VOCÊ':'ADVERSÁRIO')+' — '+c.n+'</b> '+(p.user_id==O.room.winner_id?'🏆':'')+'<br>Questões: '+t+' | Acertos: '+p.correct+' | Erros: '+p.wrong+'<br>Aproveitamento: '+pc+'%<br>Pontos: '+p.score+' | Maior sequência: '+p.max_streak+'<br>Melhor: '+bw(p.ops,1)+'<br>Precisa praticar: '+bw(p.ops,0)+'</p>'}).join('<hr>');
+ $('rB').innerHTML='<p>'+why+'</p><hr>'+O.pl.map(function(p){var t=p.correct+p.wrong,pc=t?Math.round(p.correct/t*100):0,c=p.character_id?chOf(p):{n:'?'};
+  return '<p><b>'+(p.user_id==ME.id?'VOCÊ':'ADVERSÁRIO')+' — '+c.n+'</b> '+(p.user_id==O.room.winner_id?'🏆':'')+'<br>Questões: '+t+' | Acertos: '+p.correct+' | Erros: '+p.wrong+'<br>Aproveitamento: '+pc+'%<br>Pontos: '+p.score+' | Maior sequência: '+p.max_streak+'<br>Melhor: '+bw(p.ops,1)+'<br>Precisa praticar: '+(bw(p.ops,0)==bw(p.ops,1)?'jogue mais operações':bw(p.ops,0))+'</p>'}).join('<hr>');
  sv('pb_room',null);leaveWatch();go('res')}
 </script></body></html>
